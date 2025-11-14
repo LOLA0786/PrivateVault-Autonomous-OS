@@ -1,14 +1,15 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import os
-
-# Agents
 from agents.producer_agent import ProducerAgent
-# NOTE: Add more your agents after merging
-# from agents.trader_agent import TraderAgent
-# from agents.consumer_agent import ConsumerAgent
 
 app = FastAPI(title="PrivateVault Autonomous OS")
+
+# Initialize agent with Base64 API key
+import os, base64
+ENCODED_KEY = os.getenv("OPENAI_KEY_BASE64", "")
+API_KEY = base64.b64decode(ENCODED_KEY).decode() if ENCODED_KEY else None
+
+producer_agent = ProducerAgent(api_key=API_KEY)
 
 class AgentRequest(BaseModel):
     goal: str
@@ -18,24 +19,7 @@ class AgentRequest(BaseModel):
 def health():
     return {"status": "ok"}
 
-@app.post("/agents/run")
-def run_agents(req: AgentRequest):
-    # DEMO mode if no key
-    key = os.getenv("GROK_API_KEY") or os.getenv("OPENAI_API_KEY")
-    if not key:
-        return {
-            "demo": True,
-            "status": "ok",
-            "summary": f"[DEMO] Agent pipeline simulated for: {req.goal}",
-            "score": 78,
-        }
-
-    # REAL mode engine (plug in after merge)
-    agent = ProducerAgent(5000)
-    # Integrate your full pipe later
-    return {
-        "demo": False,
-        "status": "ok",
-        "summary": f"[REAL] Pipeline executed for goal: {req.goal}",
-        "score": 92,
-    }
+@app.post("/agent/run")
+def run_agent(req: AgentRequest):
+    result = producer_agent.run_task(req.goal, req.context)
+    return {"goal": req.goal, "context": req.context, "result": result}
